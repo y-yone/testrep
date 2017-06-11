@@ -1,7 +1,9 @@
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "cb_locl.h"
 
@@ -9,7 +11,7 @@ static pthread_t pt;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static list_head task_head;
 
-static void cb_task_func(void) {
+static void* cb_task_func(void* dummy) {
     cb_ctx    *cb;
     task_data *task;
     task_data *next_task;
@@ -26,16 +28,15 @@ static void cb_task_func(void) {
             sleep(1);
             continue;
         }
-
-        cb = list_entry(&task_head);
+        cb = (cb_ctx*)(list_entry(&task_head));
         ctx = cb->ctx;
         task = cb->task;
 
         data = task->data;
         task_func = task->task_func;
 
-        if( !list_is_empty(task->list) ) {
-            next_task = task->list->next;
+        if( !list_is_empty(&task->list) ) {
+            next_task = (task_data*)task->list.next;
             cb->task = next_task;
             list_add_tail(&task_head, &cb->list);
         }
@@ -45,10 +46,12 @@ static void cb_task_func(void) {
         ret = task_func(ctx, data);
 
     }
+
+    return NULL;
 }
 
 int register_task(cb_ctx *ctx, void *data, TASK_FUNC task_func, int add_head) {
-    task_data task;
+    task_data *task;
 
     task = (task_data *)malloc(sizeof(task_data));
     if( task == NULL ) {
@@ -63,7 +66,7 @@ int register_task(cb_ctx *ctx, void *data, TASK_FUNC task_func, int add_head) {
         ctx->task = task;
     }
     else {
-        list_add_tail( &ctx->task->list, task->list );
+        list_add_tail( &ctx->task->list, &task->list );
     }
 
     ctx->task->data = data;
