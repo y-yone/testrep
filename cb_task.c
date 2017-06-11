@@ -1,12 +1,13 @@
 
 #include <stdio.h>
 #include <pthread.h>
-#include <error.h>
+#include <errno.h>
 
 #include "cb_locl.h"
 
-pthread_t pt;
-list_head task_head;
+static pthread_t pt;
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static list_head task_head;
 
 void cb_task_func() {
     cb_ctx    *cb;
@@ -14,14 +15,14 @@ void cb_task_func() {
     task_data *next_task;
     cb_ctx    *ctx;
     int       ret;
-    int       (*task_func)(void*, void*);
+    TASK_FUNC task_func;
     void      *data;
 
     for(;;) {
 
-        lock();
+    	pthread_mutex_lock(&lock);
         if( list_is_empty( &task_head ) ) {
-            unlock();
+        	pthread_mutex_unlock(&lock);
             sleep(1);
             continue;
         }
@@ -31,14 +32,14 @@ void cb_task_func() {
         task = cb->task;
 
         data = task->data;
-        task_func = task->cb_func;
+        task_func = task->task_func;
 
         if( !list_is_empty(task->list) ) {
             next_task = task->list->next;
             cb->task = next_task;
             list_add_tail(&task_head, &cb->list);
         }
-        unlock();
+        pthread_mutex_unlock(&lock);
 
         free(task);
         ret = task_func(ctx, data);
@@ -46,7 +47,7 @@ void cb_task_func() {
     }
 }
 
-int register_task(cb_ctx ctx, void *data, int (*task_func)(void*, void*), int head) {
+int register_task(cb_ctx ctx, void *data, TASK_FUNC task_func, int add_head) {
     task_data task;
 
     task = (task_data *)malloc(sizeof(task_data));
@@ -54,10 +55,10 @@ int register_task(cb_ctx ctx, void *data, int (*task_func)(void*, void*), int he
         return -ENOMEM;
     }
     task->data = data;
-    task->cb_func = task_func;
+    task->task_func = task_func;
     list_init(&task->list);
 
-    lock();
+    pthread_mutex_lock(&lock);
     if( ctx->task == NULL ) {
         ctx->task = task;
     }
@@ -69,13 +70,13 @@ int register_task(cb_ctx ctx, void *data, int (*task_func)(void*, void*), int he
     if( list_is_empty(&ctx->list) ) {
         list_add_tail(&task_head, &ctx->list);
     }
-    else if(head){
-        list_add_head(ctx->task->list)
+    else if(add_head){
+        list_add_head(&ctx->task->list, &task->list);
     }
     else {
-        list_add_tail(ctx->task->list)
+        list_add_tail(&ctx->task->list, &task->list);
     }
-    unlock();
+    pthread_mutex_unlock(&lock);
 
     return 0;
 }

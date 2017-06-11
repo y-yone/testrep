@@ -1,6 +1,8 @@
 
 #include <stdio.h>
 
+typedef int (*TASK_FUNC)(void* ctx, void* data);
+
 typedef struct cb_ctx_st cb_ctx;
 
 typedef struct list_head_st {
@@ -10,8 +12,8 @@ typedef struct list_head_st {
 typedef list_head list_t;
 
 typedef struct task_data_st {
-    void   *data;
-    int (*cb_func) (void*,void*);
+    void      *data;
+    TASK_FUNC task_func;
     list_t list;
 } task_data;
 
