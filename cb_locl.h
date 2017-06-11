@@ -9,15 +9,15 @@ typedef struct list_head_st {
 
 typedef list_head list_t;
 
-typedef struct buf_data_st {
+typedef struct task_data_st {
 	void   *data;
+    int (*cb_func) (void*,void*);
 	list_t list;
-} buf_data;
+} task_data;
 
 typedef struct cb_ctx_st {
 	void *ctx;
-	buf_data *data;
-    int (*cb_func) (void *);
+	task_data *task;
     list_t list;
 } cb_ctx;
 

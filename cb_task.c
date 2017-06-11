@@ -9,49 +9,71 @@ pthread_t pt;
 list_head task_head;
 
 void cb_task_func() {
-    buf_data *task;
-    cb_ctx   *ctx;
-    int      ret;
+	cb_ctx    *cb;
+    task_data *task;
+    task_data *next_task;
+    cb_ctx    *ctx;
+    int       ret;
+    int       (*task_func)(void*, void*);
+    void      *data;
 
     for(;;) {
+
+        lock();
         if( list_is_empty( &task_head ) ) {
+        	unlock();
             sleep(1);
             continue;
         }
-        lock();
-        task = list_entry(&task_head);
-        ctx = task->data;
-        free(task);
+
+        cb = list_entry(&task_head);
+        ctx = cb->ctx;
+        task = cb->task;
+
+        data = task->data;
+        task_func = task->cb_func;
+
+        if( !list_is_empty(task->list) ) {
+            next_task = task->list->next;
+            cb->task = next_task;
+            list_add_tail(&task_head, &cb->list);
+        }
         unlock();
 
-        ret = ctx->cb_func(ctx);
+        free(task);
+        ret = task_func(ctx, data);
 
     }
 }
 
-int register_task(cb_ctx ctx, void *data) {
-	buf_data buf;
+int register_task(cb_ctx ctx, void *data, int (*task_func)(void*, void*), int head) {
+	task_data task;
 
-	buf = (buf_data *)malloc(sizeof(cb_ctx));
-	if( buf == NULL ) {
+	task = (task_data *)malloc(sizeof(task_data));
+	if( task == NULL ) {
 		return -ENOMEM;
 	}
-	buf->data = data;
-    list_init(&buf->list);
+	task->data = data;
+	task->cb_func = task_func;
+    list_init(&task->list);
 
     lock();
-    if( ctx->data == NULL ) {
-    	ctx->data = buf;
+    if( ctx->task == NULL ) {
+    	ctx->task = task;
     }
     else {
-    	list_add_tail( &ctx->data->list, buf->list );
+    	list_add_tail( &ctx->task->list, task->list );
     }
-    ctx->data->data = data;
+
+    ctx->task->data = data;
     if( list_is_empty(&ctx->list) ) {
     	list_add_tail(&task_head, &ctx->list);
     }
+    else if(head){
+    	list_add_head(ctx->task->list)
+    }
     else {
-    	list_add_tail(ctx->cb_ctx->list)
+    	list_add_tail(ctx->task->list)
     }
     unlock();
 
