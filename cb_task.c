@@ -9,7 +9,7 @@ pthread_t pt;
 list_head task_head;
 
 void cb_task_func() {
-	cb_ctx    *cb;
+    cb_ctx    *cb;
     task_data *task;
     task_data *next_task;
     cb_ctx    *ctx;
@@ -21,7 +21,7 @@ void cb_task_func() {
 
         lock();
         if( list_is_empty( &task_head ) ) {
-        	unlock();
+            unlock();
             sleep(1);
             continue;
         }
@@ -47,33 +47,33 @@ void cb_task_func() {
 }
 
 int register_task(cb_ctx ctx, void *data, int (*task_func)(void*, void*), int head) {
-	task_data task;
+    task_data task;
 
-	task = (task_data *)malloc(sizeof(task_data));
-	if( task == NULL ) {
-		return -ENOMEM;
-	}
-	task->data = data;
-	task->cb_func = task_func;
+    task = (task_data *)malloc(sizeof(task_data));
+    if( task == NULL ) {
+        return -ENOMEM;
+    }
+    task->data = data;
+    task->cb_func = task_func;
     list_init(&task->list);
 
     lock();
     if( ctx->task == NULL ) {
-    	ctx->task = task;
+        ctx->task = task;
     }
     else {
-    	list_add_tail( &ctx->task->list, task->list );
+        list_add_tail( &ctx->task->list, task->list );
     }
 
     ctx->task->data = data;
     if( list_is_empty(&ctx->list) ) {
-    	list_add_tail(&task_head, &ctx->list);
+        list_add_tail(&task_head, &ctx->list);
     }
     else if(head){
-    	list_add_head(ctx->task->list)
+        list_add_head(ctx->task->list)
     }
     else {
-    	list_add_tail(ctx->task->list)
+        list_add_tail(ctx->task->list)
     }
     unlock();
 
