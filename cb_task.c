@@ -9,7 +9,7 @@ static pthread_t pt;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static list_head task_head;
 
-void cb_task_func() {
+static void cb_task_func(void) {
     cb_ctx    *cb;
     task_data *task;
     task_data *next_task;
@@ -47,7 +47,7 @@ void cb_task_func() {
     }
 }
 
-int register_task(cb_ctx ctx, void *data, TASK_FUNC task_func, int add_head) {
+int register_task(cb_ctx *ctx, void *data, TASK_FUNC task_func, int add_head) {
     task_data task;
 
     task = (task_data *)malloc(sizeof(task_data));
@@ -81,7 +81,7 @@ int register_task(cb_ctx ctx, void *data, TASK_FUNC task_func, int add_head) {
     return 0;
 }
 
-int cb_task_init(void) {
+int task_init(void) {
     int ret;
     list_init(&task_head);
     ret = pthread_create(&pt, NULL, cb_task_func, NULL);

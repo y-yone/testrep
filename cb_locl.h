@@ -59,3 +59,7 @@ inline void list_del_init(list_t list) {
     list->next = list;
     list->prev = list;
 }
+
+int register_task(cb_ctx *ctx, void *data, TASK_FUNC task_func, int add_head);
+int task_init(void);
+
